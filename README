@@ -1,0 +1,186 @@
+DESCRIPTION
+    This file contains an implementation of an top-down operator precedence
+    parser inspired by Douglas Crockford[1]. The parser is implemented using
+    statically created classes for Tokens in the parsed language, since I am
+    not aware of any good way of creating classes in PHP dynamically.
+
+USAGE
+        php parser.php [parse|eval|compile] code
+        php parser.php help
+
+EXAMPLES
+        $ php parser.php parse '1 + 2'
+        (+ 1 2)
+    
+        $ php parser.php eval 'echo(1 + 2)'
+        3
+    
+        $ php parser.php compile 'a = 1; b = 2'
+        $a = 1;
+        $b = 2;
+    
+        $ php parser.php help
+        # print POD as text on STDOUT
+
+    [1] http://javascript.crockford.com/tdop/tdop.html
+
+DATA MODEL
+  Rule
+    A rule represents an instruction for the lexer. Rules can "accept" input
+    strings and produce a "token" if an input has been accepted. The
+    accepted inputs for a rule are defined by the regular expression $match,
+    which should include exactly one capturing group. The value captured by
+    this group is used as the value for the token. If nothing is captured,
+    the value will be '(empty)'.
+
+    Examples:
+
+        // a rule matching numbers
+        $number = new Rule('/\s*(\d+)/', 'PHParse\NumberToken');
+        // a rule matching the + operator
+        $number = new Rule('/\s*(\+)/', 'PHParse\OpPlusToken');
+
+   "accept(&$string,&$result)"
+    Try matching the rule at the beginning of $string and remove the matched
+    text from $string. A token is created from the matched string and stored
+    in $result.
+
+    Returns the length of the match or -1 if the input string was rejected.
+
+  Token
+    Tokens define how the parse tree is constructed. The class "Token" is
+    intended to be subclassed in order to implement concrete token types. A
+    Token-class should implement either "nud", "led" or both. The method
+    "nud" ("null denotation") is used for prefix operators, identifiers and
+    statements (i.e. when the token occurs in prefix position). Similarily,
+    "led" ("left denotation") deals with tokens occurring in infix
+    positions. The property $lbp ("left-binding power") determines how
+    tightly the token binds to the left, i.e. whether
+
+        a OP1 b OP2 c
+
+    should be interpreted as
+
+        (a OP1 b) OP2 c     // high lbp
+
+    or
+
+        a OP1 (b OP2 c)     // low lbp
+
+    A $lbp of 0 means the token doesn't bind at all (e.g. statement
+    separators).
+
+  EndToken
+    This class is used for the token signalling the end of the input. Tokens
+    of this type don't bind anything, hence the $lbp of 0.
+
+  Parser
+    This class deals with lexing and parsing of a given input string. Input
+    is first tokenized and then parsed according to rules added to the
+    parser. The order in which rules are added to the parser is important,
+    as it is also the order in which the rules are matched against the
+    input.
+
+    Example:
+
+        $parser = new Parser();
+        $parser->add_rule(new Rule('/^if/','IfToken'));
+        $parser->add_rule(new Rule('/^([a-zA-Z0-9_]+)/','IdentifierToken'));
+        $parser->parse('if a');
+
+    If the rules in the example were added in reversed order, the rule for
+    'IfToken' would never apply, since the rule for 'IdentifierToken' also
+    accepts the string 'if'.
+
+   "parse($input='')"
+    Parse $input and return the resulting abstract syntax tree (AST). Issues
+    a if parts of $input cannot be tokenized by this parser. The structure
+    of the AST depends on the implementation of the Token classes referenced
+    by the parser's rules.
+
+   "expr($rbp=0)"
+    Parse and return an expression. The value of $rbp determines how much
+    the expression binds to the right. Use this function in "nud" and "led"
+    implementations of Token-subclasses.
+
+   "tokenize(&$input)"
+    Split $input into tokens and return the resulting list. After
+    tokenization $input is empty or contains text that could not be
+    tokenized.
+
+   "add_rule(Rule $rule)"
+    Append $rule to the list of this parser's rules.
+
+EXAMPLE PARSER
+    A simple parser for arithmetic infix expressions is defined as an
+    example. The parser supports prefix "+" and "-", variable assignment
+    with "=", and the four basic arithmetic operations (addition,
+    subtraction, multplication, division). Expressions can be concatenated
+    with ";". Parentheses can be used for grouping expressions.
+
+    Example expressions:
+
+        a = 1                  // 1
+        a = 10; b = 20; a * b  // 30
+        10 * 2 + 1             // 21
+        10 * (2 + 1)           // 30
+        -10 + 10               // 0
+
+UTILITY FUNCTIONS
+    The following functions are provided to show what can be done with the
+    parser. Since the parser returns simple nested arrays, these functions
+    are not strictly necessary to make sense out of the parsed data. They do
+    illustrate
+
+  "sexp_to_string($arg)"
+    Convert a plain PHP array into a symbolic expression (S-Expression or
+    sexp). Symbolic expressions express hierarchically structured data (i.e.
+    trees) and are common way of storing LISP source code.
+
+    Examples:
+
+        sexp_to_string(['+',1,2]);          // '(+ 1 2)'
+        sexp_to_string(['*',['+',2,3],12]); // '(* (+ 2 3) 12)'
+
+    The result of this function can be passed to a lisp interpreter that
+    knows the functions 'setq' and 'progn' (e.g. Emacs):
+
+        $ emacs --batch --eval "(message \"%s\" $(php parser.php parse '1 + 2'))"
+        3
+
+  "sexp_to_php($arg,$first=false)"
+    Convert a plain PHP array into PHP code. The array is expected to
+    describe code with prefix notation, i.e. the first element in the array
+    denotes the operator, the remaining elements denote the arguments.
+
+    $arg can be an array or scalar value. $first should be set to true, if
+    $arg is a scalar value denoting an operator (i.e. the first element in
+    an array).
+
+    Examples:
+
+        sexp_to_php(['echo',['+',1,2]]); // echo(1 + 2)
+        sexp_to_php(['*','length',2]]);  // $length * 2
+        sexp_to_php('echo',$first=true); // echo
+        sexp_to_php('echo');             // $echo
+
+LICENSE
+    Top-down operator precedence parser implementation Copyright (C) 2013
+    Dario Hamidi
+
+    This program is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+    Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program. If not, see <http://www.gnu.org/licenses/>.
+
+AUTHOR
+    Dario Hamidi, "dario.hamidi@gmail.com", <https://github.com/dhamidi>
+
