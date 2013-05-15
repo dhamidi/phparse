@@ -44,11 +44,15 @@ Things that should/could be added to make something useful out of this:
   
 =head1 DESCRIPTION    
  
-This file contains an implementation of an top-down operator
-precedence parser inspired by Douglas Crockford[1].  The parser
-is implemented using statically created classes for Tokens in the
-parsed language, since I am not aware of any good way of creating
+This is an implementation of a top-down operator precedence parser,
+inspired by Douglas Crockford[1].
+
+The parser is implemented using statically created classes (as opposed
+to Crockford's implementation using JavaScript objects) for Tokens in
+the parsed language, since I am not aware of any good way of creating
 classes in PHP dynamically.
+
+[1] http://javascript.crockford.com/tdop/tdop.html
 
 =head1 USAGE
 
@@ -70,8 +74,6 @@ classes in PHP dynamically.
     $ php parser.php help
     # print POD as text on STDOUT
     
-[1] http://javascript.crockford.com/tdop/tdop.html
-
 =head1 DATA MODEL
 
 =head2 Rule

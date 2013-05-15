@@ -1,8 +1,13 @@
 DESCRIPTION
-    This file contains an implementation of an top-down operator precedence
-    parser inspired by Douglas Crockford[1]. The parser is implemented using
-    statically created classes for Tokens in the parsed language, since I am
-    not aware of any good way of creating classes in PHP dynamically.
+    This is an implementation of a top-down operator precedence parser
+    inspired by Douglas Crockford[1].
+
+    The parser is implemented using statically created classes (as opposed
+    to Crockford's implementation using JavaScript objects) for Tokens in
+    the parsed language, since I am not aware of any good way of creating
+    classes in PHP dynamically.
+
+    [1] http://javascript.crockford.com/tdop/tdop.html
 
 USAGE
         php parser.php [parse|eval|compile] code
@@ -21,8 +26,6 @@ EXAMPLES
     
         $ php parser.php help
         # print POD as text on STDOUT
-
-    [1] http://javascript.crockford.com/tdop/tdop.html
 
 DATA MODEL
   Rule
