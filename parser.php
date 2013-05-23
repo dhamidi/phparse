@@ -469,7 +469,7 @@ class SubExpToken extends Token {
    public $lbp = 80;
 
    public function nud(Parser $parser) {
-      $tok = $parser->expr($this->lbp);
+      $tok = $parser->expr(0);
       $rparen = $parser->expr($this->lbp);
       return $tok;
    }
@@ -631,6 +631,26 @@ function do_help($parser, $input) {
    }
 }
 
+function do_test($parser,$input) {
+   require_once('tap.php');
+
+   $t = new \TAP();
+
+   $t->diag('symbolic expressions');
+   $t->is(sexp_to_string($parser->parse('1 + 2')),'(+ 1 2)', 'simple expression');
+   $t->is(sexp_to_string($parser->parse('1 + 2 * 3')),'(+ 1 (* 2 3))','precendence');
+   $t->is(sexp_to_string($parser->parse('a = 1')), '(setq a 1)','assignment');
+   $t->is(sexp_to_string($parser->parse('1 + 2; 3 + 4')),
+          '(progn (+ 1 2) (+ 3 4))','progn');
+   $t->is(sexp_to_string($parser->parse('(1 + 2) * 3')),
+          '(* (+ 1 2) 3)', 'parenthesized subexpressions');
+
+   $t->diag('php code');
+   $t->is(sexp_to_php($parser->parse('echo(1 + 2)')), 'echo(1 + 2);','function call');
+
+   $t->done();
+}
+
 function main($argv) {
    $parser = new Parser();
    $parser->add_rule(new Rule('/^\s*(\d+)\s*/','PHParse\NumberToken'));
@@ -644,10 +664,14 @@ function main($argv) {
    $parser->add_rule(new Rule('/^\s*(;)\s*/','PHParse\DisjunctionToken'));
    $parser->add_rule(new Rule('/^\s*([a-zA-Z0-9_]+)\s*/','PHParse\SymbolToken'));
 
+   if (count($argv) == 1) {
+      $argv[] = 'test';
+   }
+
    if (count($argv) == 2) {
       $argv[] = '';
    }
-   
+
    $action = 'PHParse\do_' . $argv[1];
    if (function_exists($action)) {
       call_user_func($action,$parser,$argv[2]);
